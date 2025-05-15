@@ -4,13 +4,18 @@ import abc
 import random
 import os
 import time
+
 # Инициализация Pygame
 pygame.init()
 import pygame.mixer
+
 pygame.mixer.init()
 menu_sound = pygame.mixer.Sound('menu.mp3')
 pygame.mixer.music.load('start.mp3')
 pygame.mixer.music.play(-1)
+fon = pygame.image.load('fon.png')
+fon = pygame.transform.scale(fon, (1000, 700))  # Масштабируем под размер экрана
+
 # Константы
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 700
@@ -23,7 +28,7 @@ PICTURES_DIR = './resurse/.'
 # Шрифты
 font = pygame.font.Font('PressStart.ttf', 48)
 small_font = pygame.font.Font('PressStart.ttf', 32)
-
+SOUNDTRACKS_DIR = './soundtracks/.'
 # Основной экран
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption('Меню и Пазл')
@@ -31,6 +36,7 @@ clock = pygame.time.Clock()
 
 # Глобальные переменные
 player_name = "Игрок"  # Имя по умолчанию
+
 
 # Базовый класс для состояний игры
 class State(abc.ABC):
@@ -45,6 +51,7 @@ class State(abc.ABC):
     @abc.abstractmethod
     def draw(self, screen):
         pass
+
 
 # Заставка
 class SplashScreen(State):
@@ -62,6 +69,8 @@ class SplashScreen(State):
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
+                pygame.mixer.music.stop()
+                menu_sound.play(-1)
                 return MenuScreen()
         return self
 
@@ -72,7 +81,7 @@ class SplashScreen(State):
             self.hint_time = current_time
 
     def draw(self, screen):
-        screen.fill(BACKGROUND)
+        screen.blit(fon, (0, 0))
         rect = self.surface.get_rect()
         rect.centerx = screen.get_rect().centerx
         rect.centery = screen.get_rect().centery - 100
@@ -82,6 +91,7 @@ class SplashScreen(State):
             hint_rect.centerx = screen.get_rect().centerx
             hint_rect.centery = screen.get_rect().centery + 100
             screen.blit(self.hint_surface, hint_rect)
+
 
 # Главное меню
 class MenuScreen(State):
@@ -120,7 +130,7 @@ class MenuScreen(State):
         pass
 
     def draw(self, screen):
-        screen.fill(BACKGROUND)
+        screen.blit(fon, (0, 0))
         for i, surface in enumerate(self.surfaces):
             color = (255, 0, 0) if i == self.selected else (255, 255, 255)
             self.surfaces[i] = font.render(self.items[i], True, color)
@@ -149,6 +159,8 @@ class MenuScreen(State):
 
     def process_item(self):
         if self.selected == 0:  # Играть
+            menu_sound.stop()
+
             return PuzzleGame()
         elif self.selected == 1:  # Ввести имя
             self.input_active = True
@@ -158,12 +170,18 @@ class MenuScreen(State):
             sys.exit()
         return self
 
+
 # Игра-пазл
 class PuzzleGame(State):
     def __init__(self):
         # Загрузка изображения
         pictures = os.listdir(PICTURES_DIR)
         picture = random.choice(pictures)
+        soundtrack = os.listdir(SOUNDTRACKS_DIR)
+        sound = random.choice(soundtrack)
+        soundtrack_path = os.path.join(SOUNDTRACKS_DIR,sound)
+        self.soundtrackss = pygame.mixer.music.load(soundtrack_path)
+        pygame.mixer.music.play()
         image_path = os.path.join(PICTURES_DIR, picture)
         self.image = pygame.image.load(image_path).convert_alpha()
 
@@ -177,7 +195,7 @@ class PuzzleGame(State):
         for i in range(ROWS):
             for j in range(COLS):
                 rect = pygame.Rect(j * self.TILE_WIDTH, i * self.TILE_HEIGHT,
-                                  self.TILE_WIDTH, self.TILE_HEIGHT)
+                                   self.TILE_WIDTH, self.TILE_HEIGHT)
                 tile = self.image.subsurface(rect)
                 self.tiles.append(tile)
 
@@ -222,7 +240,7 @@ class PuzzleGame(State):
             self.final_time = int(time.time() - self.start_time)
 
     def draw(self, screen):
-        screen.fill(BACKGROUND)
+        screen.blit(fon, (0, 0))
 
         # Отрисовка плиток
         for idx, tile in enumerate(self.tiles):
@@ -233,8 +251,8 @@ class PuzzleGame(State):
 
             if idx == self.selected:
                 pygame.draw.rect(screen, (0, 255, 0),
-                                (x - MARGIN, y - MARGIN,
-                                 self.TILE_WIDTH + MARGIN * 2, self.TILE_HEIGHT + MARGIN * 2))
+                                 (x - MARGIN, y - MARGIN,
+                                  self.TILE_WIDTH + MARGIN * 2, self.TILE_HEIGHT + MARGIN * 2))
             screen.blit(tile, (x, y))
 
         # Статистика (левый нижний угол)
@@ -262,6 +280,7 @@ class PuzzleGame(State):
             hint_rect = hint.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60))
             screen.blit(hint, hint_rect)
 
+
 # Запуск игры
 def main():
     current_state = SplashScreen()
@@ -273,6 +292,7 @@ def main():
         current_state.draw(screen)
         pygame.display.flip()
         clock.tick(60)
+
 
 if __name__ == "__main__":
     main()
